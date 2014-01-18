@@ -1,10 +1,16 @@
 #!/home/ben/software/install/bin/perl
+
+# Make a README file for a Perl module distribution.
+
 use warnings;
 use strict;
 use Template;
 use File::Slurp;
 use JSON::Parse 'parse_json';
 use Pod::Select;
+
+# Get the basic information from the generated meta-information file,
+# which is called either MYMETA.json or META.json.
 
 my $m = 'MYMETA.json';
 if (! -f $m) {
@@ -15,14 +21,26 @@ if (! -f $m) {
 }
 my $j = read_file ($m);
 my $p = parse_json ($j);
+
+# The variables to feed to the template toolkit.
+
 my %vars;
 $vars{abstract} = $p->{abstract};
 $vars{version} = $p->{version};
+
+# Get author and author email address.
+
 my $author = $p->{author}->[0];
 $author =~ s/\s+(\S+\@\S+)$//;
 my $author_email = $1;
 $vars{author} = $author;
 $vars{author_email} = $author_email;
+
+undef $author;
+undef $author_email;
+
+# Repository.
+
 my $repoweb = $p->{resources}->{repository}->{web};
 if (! $repoweb) {
     $repoweb = $p->{resources}->{repository}->{url};
@@ -31,14 +49,25 @@ if (! $repoweb) {
     die "No repo web";
 }
 $vars{repository} = $repoweb;
+
+undef $repoweb;
+
 $vars{bugtracker} = $p->{resources}->{bugtracker}->{web};
 $vars{hyphens} = $p->{name};
 $vars{colons} = $p->{name};
 $vars{colons} =~ s/-/::/g;
-$vars{spaces} = $vars{colons};
-$vars{spaces} =~ s/\b/ /g;
-$vars{figlet} = `figlet -w 75 $vars{spaces}`;
-$vars{description} = '';
+
+# Make a figlet version of the name. The spaces are inserted so that
+# the name doesn't get truncated at an awkward place.
+
+my $spaces = $vars{colons};
+$spaces =~ s/\b/ /g;
+$vars{figlet} = `figlet -w 75 $spaces`;
+
+undef $spaces;
+
+# Get minimum required version of Perl for this distribution.
+
 my $required_perl = $p->{prereqs}{runtime}{requires}{perl};
 if (! $required_perl) {
     die "Need minimum Perl version in Makefile.PL";
@@ -48,12 +77,22 @@ if (! ($required_perl =~ s/^5\.0*(\d+?)0*(\d+?)$/5.$1.$2/)) {
 }
 $vars{required_perl} = $required_perl;
 undef $required_perl;
+
+# Locate the documentation. This is specific to "my way of doing
+# things".
+
 my $pod = $p->{name};
 $pod =~ s!-!/!g;
 $pod = "lib/$pod.pod";
 if (! -f $pod) {
     $pod =~ s/\.pod$/.pm/;
 }
+
+# The "DESCRIPTION" section of the pod. Initially this is set to an
+# empty string.
+
+$vars{description} = '';
+
 if (-f $pod) {
     open my $out, ">", \$vars{description} or die $!;
     podselect ({-sections => ["DESCRIPTION"], -output => $out}, $pod);
@@ -66,15 +105,25 @@ my $tt = Template->new (
 
 );
 
+# Date for the timestamp on the final line.
+
 $vars{date} = localtime (time ());
+
+# URLs for this module.
+
 $vars{searchcpan} = "http://search.cpan.org/perldoc?$vars{colons}";
 $vars{metacpan} = "http://metacpan.org/release/$vars{hyphens}";
 my $template = join ('', <DATA>);
 $tt->process (\$template, \%vars, \my $output, binmode => 'utf8')
     or die '' . $tt->error ();
 
+# Truncate lines to 79 characters or less.
+
 my @lines = split /\n/, $output;
 my @olines;
+
+# The logic here is really hard to read.
+
 line: for my $line (@lines) {
     while (length $line > 79) {
 	$line =~ s/^(.{1,79})\s+(.*)$/$1\n/ or next line;
@@ -84,14 +133,12 @@ line: for my $line (@lines) {
     push @olines, $line;
 }
 $output = join ("\n", @olines);
-#while ($output =~ /^(.{75}\S*)\s+/gm) {
-#    my $start = $1;
-#$output =~ s/^(.{70}\S*)\s+/$1\n/gm;
-#}
 
 print "$output\n";
 
 exit;
+
+# The rest of the file is the template.
 
 __DATA__
 [% dir = hyphens _ "-" _ version -%]
@@ -141,7 +188,7 @@ After installing the module, you can read the documentation on your computer usi
 
 3. INSTALLATION
 
-This module requires Perl version [% required_perl %].
+This module requires Perl version [% required_perl %] or later.
 
 To install the module from CPAN, use
 
