@@ -1,0 +1,181 @@
+#!/home/ben/software/install/bin/perl
+use warnings;
+use strict;
+use Template;
+use File::Slurp;
+use JSON::Parse 'parse_json';
+use Pod::Select;
+
+my $m = 'MYMETA.json';
+if (! -f $m) {
+    $m = 'META.json';
+    if (! -f $m) {
+	die "No $m";
+    }
+}
+my $j = read_file ($m);
+my $p = parse_json ($j);
+my %vars;
+$vars{abstract} = $p->{abstract};
+$vars{version} = $p->{version};
+my $author = $p->{author}->[0];
+$author =~ s/\s+(\S+\@\S+)$//;
+my $author_email = $1;
+$vars{author} = $author;
+$vars{author_email} = $author_email;
+my $repoweb = $p->{resources}->{repository}->{web};
+if (! $repoweb) {
+    $repoweb = $p->{resources}->{repository}->{url};
+}
+if (! $repoweb) {
+    die "No repo web";
+}
+$vars{repository} = $repoweb;
+$vars{bugtracker} = $p->{resources}->{bugtracker}->{web};
+$vars{hyphens} = $p->{name};
+$vars{colons} = $p->{name};
+$vars{colons} =~ s/-/::/g;
+$vars{spaces} = $vars{colons};
+$vars{spaces} =~ s/\b/ /g;
+$vars{figlet} = `figlet -w 75 $vars{spaces}`;
+$vars{description} = '';
+my $required_perl = $p->{prereqs}{runtime}{requires}{perl};
+if (! $required_perl) {
+    die "Need minimum Perl version in Makefile.PL";
+}
+if (! ($required_perl =~ s/^5\.0*(\d+?)0*(\d+?)$/5.$1.$2/)) {
+    die "Unrecognized minimum Perl version $required_perl";
+}
+$vars{required_perl} = $required_perl;
+undef $required_perl;
+my $pod = $p->{name};
+$pod =~ s!-!/!g;
+$pod = "lib/$pod.pod";
+if (! -f $pod) {
+    $pod =~ s/\.pod$/.pm/;
+}
+if (-f $pod) {
+    open my $out, ">", \$vars{description} or die $!;
+    podselect ({-sections => ["DESCRIPTION"], -output => $out}, $pod);
+    $vars{description} =~ s/^=.*//gm;
+    $vars{description} =~ s/^\s+|\s+$//g;
+    $vars{description} =~ s/[A-Z]<\/?(.*?)>/"$1"/gms;
+}
+
+my $tt = Template->new (
+
+);
+
+$vars{date} = localtime (time ());
+$vars{searchcpan} = "http://search.cpan.org/perldoc?$vars{colons}";
+$vars{metacpan} = "http://metacpan.org/release/$vars{hyphens}";
+my $template = join ('', <DATA>);
+$tt->process (\$template, \%vars, \my $output, binmode => 'utf8')
+    or die '' . $tt->error ();
+
+my @lines = split /\n/, $output;
+my @olines;
+line: for my $line (@lines) {
+    while (length $line > 79) {
+	$line =~ s/^(.{1,79})\s+(.*)$/$1\n/ or next line;
+	push @olines, $1;
+	$line = $2;
+    }
+    push @olines, $line;
+}
+$output = join ("\n", @olines);
+#while ($output =~ /^(.{75}\S*)\s+/gm) {
+#    my $start = $1;
+#$output =~ s/^(.{70}\S*)\s+/$1\n/gm;
+#}
+
+print "$output\n";
+
+exit;
+
+__DATA__
+[% dir = hyphens _ "-" _ version -%]
+[% file = dir _ ".tar.gz" -%]
+[% figlet | indent (2) %]
+
+This is the README for [% colons %] version [% version %].
+
+[% colons %] is a "module" for the Perl computer programming language, a library of computer code to install on a computer.  This document contains four sections:
+
+1. About - what the module does
+
+2. Documentation - how to learn more about the module
+
+3. Installation - how to install this module on a computer
+
+4. Help - what to do if you get stuck
+
+-----------------------------------------------------------------------------
+
+1. ABOUT
+
+[% IF abstract -%]
+[% colons %] - [% abstract %]
+[%- END %]
+
+[% IF description -%]
+[% description %]
+[%- END %]
+
+-----------------------------------------------------------------------------
+
+2. DOCUMENTATION
+
+You can read the documentation for the module online at the following websites:
+
+    * [% searchcpan %]
+    * [% metacpan %]
+
+(These links go to the latest version of the module.)
+
+After installing the module, you can read the documentation on your computer using
+
+    perldoc [% colons %]
+
+-----------------------------------------------------------------------------
+
+3. INSTALLATION
+
+This module requires Perl version [% required_perl %].
+
+To install the module from CPAN, use
+
+    cpan [% colons %]
+
+If you have the App::cpanminus installer, you may prefer
+
+    cpanm [% colons %]
+
+To install the module from the source file, [% file %], follow this sequence of commands:
+
+    tar xfz [% file %]
+    cd [% dir %]
+    perl Makefile.PL
+    make
+    make install
+
+If you want to test the module before installing it, use "make test" after "make" and before "make install".
+
+-----------------------------------------------------------------------------
+
+4. HELP
+
+To get help with the module, you can email the author, [% author %], at [% author_email %]. If you think there is a problem in the module, you can report a bug at 
+
+<[% bugtracker %]>,
+
+or if you want to alter the source code of [% colons %], try the public repository on github at 
+
+<[% repository %]>. 
+
+-----------------------------------------------------------------------------
+
+This README was written on [% date %].
+
+-----------------------------------------------------------------------------
+
