@@ -1,0 +1,4 @@
+This is a script to make a README file for a Perl distribution. The
+process and the output file are quite specific to the way I want to do
+things, and probably not useful as-is for other people. Please feel
+free to fork and make it work "your way", because I did it "my way".
