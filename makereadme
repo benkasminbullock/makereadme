@@ -98,6 +98,8 @@ if (-f $pod) {
     podselect ({-sections => ["DESCRIPTION"], -output => $out}, $pod);
     $vars{description} =~ s/^=.*//gm;
     $vars{description} =~ s/^\s+|\s+$//g;
+    # Hackaround the example program links added by my other script.
+    $vars{description} =~ s/L<F<([^\>]+?)>\|[^>]+?>/"$1"/g;
     $vars{description} =~ s/[A-Z]<\/?(.*?)>/"$1"/gms;
 }
 
@@ -124,17 +126,35 @@ my @olines;
 
 # The logic here is really hard to read.
 
-line: for my $line (@lines) {
-    while (length $line > 79) {
-	$line =~ s/^(.{1,79})\s+(.*)$/$1\n/ or next line;
-	push @olines, $1;
-	$line = $2;
+for my $line (@lines) {
+    if ($line =~ /api/) {
+print STDERR " >>>>>>>>> $line\n";
+}
+    # If it is not literal text
+    if ($line =~ /^\S/) {
+	# If it is longer than 75 characters
+	while (length $line > 75) {
+	    # If it contains a space where it can be broken
+	    if ($line =~ /^(.{1,75})\s+(.*)$/) {
+		# Save the first part of the line as a new line.
+		push @olines, $1;
+		# Do the while loop with the remainder.
+		$line = $2;
+	    }
+	    else {
+		# Stop this while loop.
+		last;
+	    }
+	}
     }
+    if ($line =~ /api/) {
+print STDERR "$line\n";
+}
     push @olines, $line;
 }
 $output = join ("\n", @olines);
 
-print "$output\n";
+print $output, "\n";
 
 exit;
 
