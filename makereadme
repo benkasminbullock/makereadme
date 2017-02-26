@@ -72,8 +72,15 @@ my $required_perl = $p->{prereqs}{runtime}{requires}{perl};
 if (! $required_perl) {
     die "Need minimum Perl version in Makefile.PL";
 }
-if (! ($required_perl =~ s/^5\.0*(\d+?)0*(\d+?)$/5.$1.$2/)) {
+if ($required_perl !~ /^5\.([0-9]{3})([0-9]*)$/) {
     die "Unrecognized minimum Perl version $required_perl";
+}
+$required_perl = '5.' . int ($1);
+if ($2) {
+    $required_perl .= '.' . int ($2);
+}
+else {
+    $required_perl .= '.0';
 }
 $vars{required_perl} = $required_perl;
 undef $required_perl;
@@ -91,20 +98,10 @@ if (! -f $pod) {
 # The "DESCRIPTION" section of the pod. Initially this is set to an
 # empty string.
 
-$vars{description} = '';
-
-if (-f $pod) {
-    open my $out, ">", \$vars{description} or die $!;
-    podselect ({-sections => ["DESCRIPTION"], -output => $out}, $pod);
-    $vars{description} =~ s/^=.*//gm;
-    $vars{description} =~ s/^\s+|\s+$//g;
-    # Hackaround the example program links added by my other script.
-    $vars{description} =~ s/L<F<([^\>]+?)>\|[^>]+?>/"$1"/g;
-    $vars{description} =~ s/[A-Z]<\/?(.*?)>/"$1"/gms;
-}
+$vars{description} = get_description ($pod);
 
 my $tt = Template->new (
-
+    STRICT => 1,
 );
 
 # Date for the timestamp on the final line.
@@ -157,6 +154,30 @@ $output = join ("\n", @olines);
 print $output, "\n";
 
 exit;
+
+sub get_description
+{
+    my ($pod) = @_;
+    my $description;
+    if (-f $pod) {
+	open my $out, ">", \$description or die $!;
+	podselect ({-sections => ["DESCRIPTION"], -output => $out}, $pod);
+	close $out;
+	# Remove POD, keeping whatever titles may come after it.
+	$description =~ s/^=\S+\h*(.*)/$1/gm;
+	# Remove the title DESCRIPTION, since we already have ABOUT.
+	$description =~ s/\s*DESCRIPTION\s*//;
+	# Remove leading and trailing whitespace.
+	$description =~ s/^\s+|\s+$//g;
+	# Convert multiple empty lines into a single empty line.
+	$description =~ s/(\S)\s*\n\s+\n(\S)/$1\n\n$2/g;
+	# Hackaround the example program links added by my other script.
+	$description =~ s/L<F<([^\>]+?)>\|[^>]+?>/"$1"/g;
+	# Convert L<x>, C<x> into "x".
+	$description =~ s/[A-Z]<\/?(.*?)>/"$1"/gms;
+    }
+    return $description;
+}
 
 # The rest of the file is the template.
 
