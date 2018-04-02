@@ -5,7 +5,7 @@
 use warnings;
 use strict;
 use Template;
-use File::Slurp;
+use File::Slurper 'read_text';
 use JSON::Parse 'parse_json';
 use Pod::Select;
 
@@ -19,7 +19,7 @@ if (! -f $m) {
 	die "No $m";
     }
 }
-my $j = read_file ($m);
+my $j = read_text ($m);
 my $p = parse_json ($j);
 
 # The variables to feed to the template toolkit.
