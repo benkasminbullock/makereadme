@@ -125,8 +125,8 @@ my @olines;
 
 for my $line (@lines) {
     if ($line =~ /api/) {
-print STDERR " >>>>>>>>> $line\n";
-}
+	print STDERR " >>>>>>>>> $line\n";
+    }
     # If it is not literal text
     if ($line =~ /^\S/) {
 	# If it is longer than 75 characters
@@ -145,8 +145,8 @@ print STDERR " >>>>>>>>> $line\n";
 	}
     }
     if ($line =~ /api/) {
-print STDERR "$line\n";
-}
+	print STDERR "$line\n";
+    }
     push @olines, $line;
 }
 $output = join ("\n", @olines);
