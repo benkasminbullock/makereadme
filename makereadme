@@ -14,10 +14,11 @@ use Pod::Select;
 
 my $m = 'MYMETA.json';
 if (! -f $m) {
-    $m = 'META.json';
-    if (! -f $m) {
-	die "No $m";
+    my $m2 = 'META.json';
+    if (! -f $m2) {
+	die "No $m or $m2";
     }
+    $m = $m2;
 }
 my $j = read_text ($m);
 my $p = parse_json ($j);

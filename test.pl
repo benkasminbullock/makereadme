@@ -10,7 +10,7 @@ ok (-f $x, "File exists");
 chdir ("$Bin/t/silly-distro") or die $!;
 run3 ("$x", undef, \my $output, \my $errors);
 if ($errors) {
-note ($errors);
+    note ($errors);
 }
 ok (! $errors, "no errors");
 ok ($output, "got output");
